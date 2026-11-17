@@ -1,0 +1,56 @@
+{
+  "name": "dsh-worklog-calendar",
+  "version": "0.1.0",
+  "description": "Work log calendar for DeepSeek Harness: a left-sidebar month calendar that shows what each day actually did - sessions, turns, prompts, tool calls - read from the local session logs.",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "author": "liulin",
+  "icon": "icon.svg",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sean-liulin/dsh-worklog-calendar.git"
+  },
+  "homepage": "https://github.com/sean-liulin/dsh-worklog-calendar#readme",
+  "bugs": {
+    "url": "https://github.com/sean-liulin/dsh-worklog-calendar/issues"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "worklog",
+    "calendar",
+    "sessions",
+    "ui"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": []
+    }
+  }
+}

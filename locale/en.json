@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Work log",
+    "description": "Adds a Work log entry to the left sidebar. It opens a month calendar whose panel starts on today's overview and switches to any date, listing that day's sessions, turns, prompts, and tool calls with the top tools and the first prompt of each session. Clicking a session opens it. The panel reads local session logs read-only through the Host and never changes a session; turn the bundle off to remove the entry and the two read-only feeds.",
+    "detail": "docs/DETAIL.md"
+  }
+}
