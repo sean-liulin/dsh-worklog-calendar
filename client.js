@@ -22,7 +22,6 @@ window.__ModuleLoader__.load({
     const DICT = {
       'zh-CN': {
         'panel.title': '工作日志',
-        'panel.subtitle': '按天回顾 DSH 里的工作',
         'cal.prev': '上个月',
         'cal.next': '下个月',
         'cal.today': '今天',
@@ -60,7 +59,6 @@ window.__ModuleLoader__.load({
       },
       en: {
         'panel.title': 'Work log',
-        'panel.subtitle': 'Review what DSH did, day by day',
         'cal.prev': 'Previous month',
         'cal.next': 'Next month',
         'cal.today': 'Today',
@@ -102,12 +100,12 @@ window.__ModuleLoader__.load({
 .wl-root{height:100%;overflow:auto;padding:20px 24px 32px;box-sizing:border-box;
   color:var(--dsw-alias-label-primary,#1f2328);font:inherit;font-size:13px;line-height:1.5;
   container-type:inline-size}
-.wl-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.wl-heading{display:flex;flex-direction:column;gap:2px;min-width:0}
+.wl-head{margin-bottom:14px}
 .wl-title{margin:0;font-size:16px;font-weight:600;line-height:1.3}
 .wl-sub{color:var(--dsw-alias-label-secondary,#5c6570);font-size:12px}
-.wl-nav{display:flex;align-items:center;gap:6px;margin-left:auto}
-.wl-month{min-width:104px;text-align:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.wl-nav{display:flex;align-items:center;gap:4px;margin-left:auto}
+.wl-month{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.wl-cal-nav{display:flex;align-items:center;gap:4px;margin-bottom:10px}
 .wl-btn{border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));background:var(--dsw-alias-bg-layer-1,#fff);
   color:var(--dsw-alias-label-primary,#1f2328);border-radius:8px;height:28px;padding:0 10px;font:inherit;font-size:12px;
   line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px;
@@ -163,7 +161,7 @@ window.__ModuleLoader__.load({
   padding:1px 8px;font-size:10.5px;color:var(--dsw-alias-label-secondary,#5c6570);white-space:nowrap;max-width:100%}
 .wl-chip b{color:var(--dsw-alias-label-primary,#1f2328);font-variant-numeric:tabular-nums;font-weight:600}
 .wl-chip-bad{color:var(--dsw-alias-state-error-primary,#e5484d);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#e5484d) 40%, transparent)}
-.wl-list{display:flex;flex-direction:column;gap:9px}
+.wl-list{display:flex;flex-direction:column;gap:9px;max-height:clamp(260px,calc(100vh - 360px),720px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-gutter:stable;scrollbar-width:thin}
 .wl-list-title{margin:0 0 7px;font-size:11px;font-weight:600;color:var(--dsw-alias-label-secondary,#5c6570);letter-spacing:.02em}
 .wl-session{width:100%;box-sizing:border-box;text-align:left;border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.12));
   background:var(--dsw-alias-bg-layer-2,#f5f7fa);border-radius:10px;padding:9px 11px;font:inherit;color:inherit;cursor:pointer;
@@ -195,6 +193,11 @@ window.__ModuleLoader__.load({
     const clockText = (time) => {
       const date = new Date(time)
       return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+    }
+
+    /** Dictionary for an active locale id; unknown or missing falls back to Chinese. */
+    function tableFor(activeLocale) {
+      return /^en\b/i.test(String(activeLocale ?? '')) ? DICT.en : DICT['zh-CN']
     }
 
     function format(localeId, options, date) {
@@ -299,10 +302,12 @@ window.__ModuleLoader__.load({
     }
 
     /** Build the slot component with the plugin's translator and actions closed over. */
-    function createPanel({ t, localeService, openSession, canOpenSession }) {
+    function createPanel({ translate, localeService, openSession, canOpenSession }) {
       function WorklogPanel() {
         const snapshot = useLocaleSnapshot(localeService)
-        const localeId = snapshot?.active || 'zh-CN'
+        const activeLocale = snapshot?.active || ''
+        const localeId = /^en\b/i.test(activeLocale) ? 'en' : 'zh-CN'
+        const t = useCallback((key) => translate(key, activeLocale), [translate, activeLocale])
         const todayKey = toKey(new Date())
         const [cursor, setCursor] = useState(() => startOfMonth(new Date()))
         const [selected, setSelected] = useState(todayKey)
@@ -438,7 +443,34 @@ window.__ModuleLoader__.load({
           : t('common.empty')
         const tokenTotal = totals ? totals.inputTokens + totals.outputTokens : 0
 
+        const cancelToday = selected === todayKey && monthKey === currentMonthKey
+        const monthNav = h('div', { className: 'wl-cal-nav' },
+          h('span', { className: 'wl-month' }, format(localeId, { year: 'numeric', month: 'long' }, cursor)),
+          h('span', { style: { flex: 1 } }),
+          h('button', {
+            className: 'wl-btn wl-btn-ico',
+            type: 'button',
+            onClick: () => goMonth(-1),
+            title: t('cal.prev'),
+            'aria-label': t('cal.prev'),
+          }, '‹'),
+          h('button', {
+            className: 'wl-btn wl-btn-ico',
+            type: 'button',
+            onClick: () => goMonth(1),
+            disabled: monthKey >= currentMonthKey,
+            title: t('cal.next'),
+            'aria-label': t('cal.next'),
+          }, '›'),
+          h('button', {
+            className: 'wl-btn',
+            type: 'button',
+            onClick: goToday,
+            disabled: cancelToday,
+          }, t('cal.today')))
+
         const calendar = h('section', { className: 'wl-card wl-cal', 'aria-label': t('panel.title') },
+          monthNav,
           h('div', { className: 'wl-week' }, WEEKDAY_KEYS.map((key) => h('div', { className: 'wl-wd', key }, t(key)))),
           h('div', {
             className: 'wl-cal-grid',
@@ -591,32 +623,7 @@ window.__ModuleLoader__.load({
 
         return h('div', { className: 'wl-root' },
           h('div', { className: 'wl-head' },
-            h('div', { className: 'wl-heading' },
-              h('h2', { className: 'wl-title' }, t('panel.title')),
-              h('span', { className: 'wl-sub' }, t('panel.subtitle'))),
-            h('div', { className: 'wl-nav' },
-              h('button', {
-                className: 'wl-btn wl-btn-ico',
-                type: 'button',
-                onClick: () => goMonth(-1),
-                title: t('cal.prev'),
-                'aria-label': t('cal.prev'),
-              }, '‹'),
-              h('div', { className: 'wl-month' }, format(localeId, { year: 'numeric', month: 'long' }, cursor)),
-              h('button', {
-                className: 'wl-btn wl-btn-ico',
-                type: 'button',
-                onClick: () => goMonth(1),
-                disabled: monthKey >= currentMonthKey,
-                title: t('cal.next'),
-                'aria-label': t('cal.next'),
-              }, '›'),
-              h('button', {
-                className: 'wl-btn',
-                type: 'button',
-                onClick: goToday,
-                disabled: selected === todayKey && monthKey === todayKey.slice(0, 7),
-              }, t('cal.today')))),
+            h('h2', { className: 'wl-title' }, t('panel.title'))),
           h('div', { className: 'wl-layout' }, calendar, overview))
       }
 
@@ -636,9 +643,30 @@ window.__ModuleLoader__.load({
           }
         }, 'dsh-worklog-calendar: panel styles')
 
-        let translate = (key) => DICT.en[key] ?? key
+        // The locale service is read for the active language only. bind() resolves to
+        // the raw key when a namespace is not in its merge table, so depending on it
+        // left the whole panel in English on a Chinese UI. The dictionaries live here.
+        let localeService
         try {
-          const locale = ctx.locale
+          localeService = ctx.get ? ctx.get('locale') : undefined
+        } catch {
+          localeService = undefined
+        }
+
+        const activeLocaleId = () => {
+          try {
+            const snapshot = localeService?.getSnapshot?.()
+            if (snapshot && typeof snapshot.active === 'string') return snapshot.active
+          } catch {
+            /* fall through to the default */
+          }
+          return ''
+        }
+        const translate = (key, activeLocale = activeLocaleId()) =>
+          tableFor(activeLocale)[key] ?? DICT['zh-CN'][key] ?? key
+
+        try {
+          const locale = localeService
           if (locale && typeof locale.register === 'function') {
             ctx.effect(() => {
               let offZh = () => {}
@@ -655,24 +683,10 @@ window.__ModuleLoader__.load({
               }
             }, 'dsh-worklog-calendar: locale dictionaries')
           }
-          if (locale && typeof locale.bind === 'function') {
-            const bound = locale.bind(NS)
-            translate = (key) => {
-              try {
-                const value = bound(key)
-                if (typeof value === 'string' && value && value !== key) return value
-              } catch {
-                /* fall through to the local table */
-              }
-              return DICT.en[key] ?? key
-            }
-          }
         } catch {
-          /* keep the English table */
+          /* registration is optional; the panel keeps its own dictionaries */
         }
-        const t = (key) => translate(key)
 
-        const localeService = ctx.get ? ctx.get('locale') : undefined
         let uiWorkspace
         try {
           uiWorkspace = ctx.get ? ctx.get('uiWorkspace') : undefined
@@ -680,6 +694,7 @@ window.__ModuleLoader__.load({
           uiWorkspace = undefined
         }
         const canOpenSession = Boolean(uiWorkspace && typeof uiWorkspace.openSession === 'function')
+
         const openSession = (sessionId) => {
           if (!canOpenSession) return
           try {
@@ -689,13 +704,13 @@ window.__ModuleLoader__.load({
           }
         }
 
-        const Panel = createPanel({ t, localeService, openSession, canOpenSession })
+        const Panel = createPanel({ translate, localeService, openSession, canOpenSession })
 
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
           name: 'sidebar.panellist',
           id: PANEL_ID,
           order: 25,
-          label: () => t('panel.title'),
+          label: () => translate('panel.title'),
         }, WorklogIcon))
 
         ctx.slots.inject('main', () => ctx.slots.register({
